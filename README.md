@@ -1,3 +1,4 @@
+
 # LearnMind: A Personalized AI Learning Assistant
 
 Streamlit frontend + FastAPI backend + RAG (Sentence Transformers, FAISS, Groq) + Bayesian Knowledge
@@ -128,3 +129,4 @@ pytest
 16 tests: BKT numbers equal the notebook and the synopsis example; the API flow (add notes, tutor, generate, answer,
 mastery, recommendations, dashboard); YouTube chunking and timestamp guidance; Groq request and fallback handling
 with a faked HTTP call.
+
