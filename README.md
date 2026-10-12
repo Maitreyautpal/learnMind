@@ -100,7 +100,7 @@ resulting parameters on the student's own concepts.
 | Chunk size / overlap | 300 words / 50 words (YouTube: about 300 words per chunk, no overlap, timestamps kept) |
 | k (chunks retrieved) | 4 |
 | FAISS index type | `IndexFlatIP` on L2-normalised vectors (cosine similarity), one index per student |
-| LLM | Groq (GroqCloud), default model `llama-3.3-70b-versatile` (set `GROQ_MODEL`; check current names on the Groq console) |
+| LLM | Groq (GroqCloud), default model `openai/gpt-oss-120b` (set `GROQ_MODEL`; check current names on the Groq console) |
 | BKT parameters | P(L0) 0.30, P(T) 0.20, P(G) 0.30, P(S) 0.10 (grid search, notebook) |
 | Forgetting | 1 - exp(-0.01 x interaction gap) |
 | Endpoints | `GET /health`, `POST/GET /users`, `POST /materials/pdf` `/notes` `/youtube`, `GET /materials/{user_id}`, `DELETE /materials/{user_id}/{material_id}`, `POST /tutor/ask`, `POST /practice/generate`, `GET /practice/next`, `POST /practice/answer`, `GET /mastery/{user_id}`, `GET /recommendations/{user_id}`, `GET /dashboard/{user_id}` |
