@@ -4,7 +4,10 @@ from typing import Optional
 
 import requests
 
-BASE_URL = os.getenv("LEARNMIND_API", "http://127.0.0.1:8000")
+BASE_URL = os.getenv(
+    "LEARNMIND_API",
+    "https://learnmind-api.onrender.com"
+).rstrip("/")
 
 
 class BackendOffline(Exception):
