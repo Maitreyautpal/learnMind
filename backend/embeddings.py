@@ -50,14 +50,34 @@ class STEmbedder:
         return np.asarray(vecs, dtype="float32")
 
 
+class FastEmbedder:
+    """Same pretrained model, run with ONNX (no PyTorch): about 200 MB RAM, fits small servers."""
+
+    def __init__(self, model_name: str):
+        from fastembed import TextEmbedding
+        self.model = TextEmbedding(model_name)
+        self.name = model_name
+        self.dim = len(next(iter(self.model.embed(["warm up"]))))
+
+    def encode(self, texts) -> np.ndarray:
+        vecs = np.asarray(list(self.model.embed(list(texts))), dtype="float32")
+        norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        return (vecs / norms).astype("float32")
+
+
 @lru_cache(maxsize=1)
 def get_embedder():
-    if config.EMBEDDER != "hash":
+    """EMBEDDER=auto: Sentence Transformers, then FastEmbed (ONNX), then the hash fallback.
+    EMBEDDER=fastembed or hash forces one of them."""
+    order = {"hash": [], "fastembed": [FastEmbedder],
+             "st": [STEmbedder]}.get(config.EMBEDDER, [STEmbedder, FastEmbedder])
+    for cls in order:
         try:
-            emb = STEmbedder(config.EMBED_MODEL)
-            log.info("Using Sentence Transformers model %s", config.EMBED_MODEL)
+            emb = cls(config.EMBED_MODEL)
+            log.info("Using %s with model %s", cls.__name__, config.EMBED_MODEL)
             return emb
         except Exception as exc:  # missing package, no internet for first download, ...
-            log.warning("Sentence Transformers unavailable (%s). Falling back to the offline "
-                        "hash embedder: search will match words, not meaning.", exc)
+            log.warning("%s unavailable (%s).", cls.__name__, exc)
+    log.warning("Falling back to the offline hash embedder: search will match words, not meaning.")
     return HashEmbedder()

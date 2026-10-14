@@ -7,6 +7,10 @@ from components import ui
 st.set_page_config(page_title="LearnMind", page_icon="🧠", layout="wide")
 
 online = api.online()
+if not online and not api.is_local() and not st.session_state.get("_wake_tried"):
+    st.session_state["_wake_tried"] = True
+    with st.spinner("Waking up the server (free hosting sleeps when idle, up to 1 minute)..."):
+        online = api.wake_up()
 st.session_state["demo"] = not online
 
 pages = [

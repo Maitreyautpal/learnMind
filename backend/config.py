@@ -42,7 +42,7 @@ EMBED_DIM = 384  # used only by the offline hash embedder
 CHUNK_WORDS = int(os.getenv("CHUNK_WORDS", "300"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "50"))
 TOP_K = int(os.getenv("TOP_K", "4"))
-MAX_UPLOAD_MB = 20
+MAX_UPLOAD_MB = 200
 
 # ---- LLM (Groq). Key and model are read at call time from the environment ---
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"

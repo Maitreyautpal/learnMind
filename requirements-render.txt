@@ -1,0 +1,12 @@
+# Backend only (Render). No PyTorch, no Streamlit: small enough for a 512 MB server.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+pydantic>=2.6
+requests>=2.31
+numpy>=1.26
+faiss-cpu>=1.8
+fastembed>=0.4
+pypdf>=4.0
+youtube-transcript-api==1.2.4
+python-dotenv>=1.0

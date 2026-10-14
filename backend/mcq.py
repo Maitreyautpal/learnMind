@@ -129,7 +129,13 @@ def _offline_mcq(chunk_text: str, pool: list, pass_no: int, rng: random.Random,
 
 
 # ---------------------------------------------------------------- main entry
-def generate_for_material(user_id: int,material_id: int,n: int,language: str = "hinglish",difficulty: str = "medium",) -> dict:
+def generate_for_material(
+    user_id: int,
+    material_id: int,
+    n: int,
+    language: str = "hinglish",
+    difficulty: str = "medium",
+) -> dict:
     chunks = db.get_chunks(user_id, material_id)
     if not chunks:
         raise LookupError("material has no content")

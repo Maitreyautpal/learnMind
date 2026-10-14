@@ -4,11 +4,7 @@ from typing import Optional
 
 import requests
 
-BASE_URL = os.getenv(
-    "LEARNMIND_API",
-    "https://learnmind-api.onrender.com"
-).rstrip("/")
-
+BASE_URL = os.getenv("LEARNMIND_API", "http://127.0.0.1:8000").rstrip("/")
 
 class BackendOffline(Exception):
     """The FastAPI backend could not be reached."""
@@ -39,6 +35,22 @@ def _call(method: str, path: str, timeout: int = 120, **kwargs):
         raise ApiError(resp.status_code, _detail(resp))
     return resp.json()
 
+def is_local() -> bool:
+    return "127.0.0.1" in BASE_URL or "localhost" in BASE_URL
+
+
+def wake_up(max_wait: int = 75) -> bool:
+    """Free hosting (Render) sleeps when idle; the first request takes up to a minute."""
+    import time
+    end = time.time() + max_wait
+    while time.time() < end:
+        try:
+            if requests.get(BASE_URL + "/health", timeout=10).status_code == 200:
+                return True
+        except requests.RequestException:
+            pass
+        time.sleep(3)
+    return False
 
 def online() -> bool:
     try:

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: learnmind-api
+    runtime: python
+    plan: free                      # change to starter + enable the disk below for permanent data
+    buildCommand: pip install -r requirements-render.txt && python -c "from fastembed import TextEmbedding; TextEmbedding('sentence-transformers/all-MiniLM-L6-v2')"
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: FASTEMBED_CACHE_PATH
+        value: /opt/render/project/src/.fastembed
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_API_KEY
+        sync: false                 # paste the key in the Render dashboard, not in Git
+    # Permanent SQLite (paid plans only). Uncomment these 4 lines and the LEARNMIND_DATA_DIR variable.
+    # disk:
+    #   name: learnmind-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    #   (then add envVar  LEARNMIND_DATA_DIR = /var/data)
