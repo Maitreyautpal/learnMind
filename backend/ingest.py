@@ -1,5 +1,6 @@
 """Turn PDFs, pasted notes and YouTube videos into chunks."""
 import io
+import os
 import re
 from typing import Optional
 
@@ -58,55 +59,35 @@ def parse_youtube_id(url: str) -> Optional[str]:
     return url if re.fullmatch(r"[A-Za-z0-9_-]{11}", url.strip()) else None
 
 
+def _transcript_api():
+    """YouTubeTranscriptApi; goes through a proxy when one is set (needed on Render)."""
+    from youtube_transcript_api import YouTubeTranscriptApi
+    user, pwd = os.getenv("WEBSHARE_PROXY_USER"), os.getenv("WEBSHARE_PROXY_PASS")
+    url = os.getenv("YT_PROXY_URL")
+    if user and pwd:
+        from youtube_transcript_api.proxies import WebshareProxyConfig
+        return YouTubeTranscriptApi(proxy_config=WebshareProxyConfig(
+            proxy_username=user, proxy_password=pwd))
+    if url:
+        from youtube_transcript_api.proxies import GenericProxyConfig
+        return YouTubeTranscriptApi(proxy_config=GenericProxyConfig(http_url=url, https_url=url))
+    return YouTubeTranscriptApi()
+
 
 def fetch_youtube_segments(video_id: str) -> list:
-    """Fetch YouTube transcript and return normalized segments."""
+    """List of {text, start, duration}. Works with old and new youtube-transcript-api."""
+    from youtube_transcript_api import YouTubeTranscriptApi
     try:
-        from youtube_transcript_api import YouTubeTranscriptApi
-
-        fetched = YouTubeTranscriptApi().fetch(
-            video_id,
-            languages=["en", "hi"]
-        )
-
-        segments = []
-        for item in fetched:
-            # Compatible with newer transcript snippets
-            if hasattr(item, "text"):
-                text = item.text
-                start = item.start
-                duration = item.duration
-            else:
-                # Compatible with dictionary-style transcript items
-                text = item.get("text", "")
-                start = item.get("start", 0)
-                duration = item.get("duration", 0)
-
-            if text and text.strip():
-                segments.append({
-                    "text": text,
-                    "start": float(start),
-                    "duration": float(duration)
-                })
-
-        if not segments:
-            raise IngestError(
-                "Transcript is empty. Try another video or upload its transcript."
-            )
-
-        return segments
-
-    except IngestError:
-        raise
+        try:
+            fetched = _transcript_api().fetch(video_id, languages=["en", "hi"])
+            return [{"text": s.text, "start": s.start, "duration": s.duration} for s in fetched]
+        except AttributeError:
+            return YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "hi"])
     except Exception as exc:
-        error = str(exc)
-        if "403" in error or "Forbidden" in error or "blocked" in error.lower():
-            raise IngestError(
-                "YouTube is blocking transcript requests from the backend server. "
-                "This is a hosting/network restriction, not a chunking error. "
-                "Try another video or use the transcript-text fallback."
-            )
-        raise IngestError(f"Could not fetch the transcript: {error}")
+        reason = (str(exc).strip().splitlines() or [""])[0][:160]
+        raise IngestError(
+            "Could not fetch the transcript automatically (YouTube often blocks cloud servers). "
+            "Copy the video's transcript and add it in the Notes tab instead. " + reason)
 
 
 

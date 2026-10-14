@@ -40,45 +40,11 @@ with tab_notes:
 
 
 with tab_yt:
-    url = st.text_input(
-        "YouTube link",
-        placeholder="https://www.youtube.com/watch?v=..."
-    )
+    url = st.text_input("YouTube link", placeholder="https://www.youtube.com/watch?v=...")
     yt = st.text_input("Title (optional)", key="yt_title")
-
-    st.caption(
-        "Automatic transcript fetching may fail if YouTube blocks "
-        "the backend server. You can paste the transcript below instead."
-    )
-
-    if st.button("Fetch transcript and add video", disabled=not url.strip()):
+    st.caption("The video needs captions. The transcript is kept with its timestamps so a weak "
+               "concept can be linked to the exact part of the video. If automatic fetching "
+               "fails, copy the transcript and add it in the Notes tab.")
+    if st.button("Add video", disabled=not url.strip()):
         with st.spinner("Fetching transcript and indexing..."):
             done(ui.safe(api.add_youtube, uid, url.strip(), yt.strip() or None))
-
-    st.divider()
-    st.subheader("Transcript fallback")
-    st.caption(
-        "Open the video's transcript on YouTube, copy its text, "
-        "and paste it here if automatic fetching fails."
-    )
-
-    transcript = st.text_area(
-        "Paste YouTube transcript",
-        height=220,
-        key="youtube_transcript"
-    )
-
-    if st.button(
-        "Add pasted transcript",
-        disabled=len(transcript.strip().split()) < 20
-    ):
-        with st.spinner("Chunking and indexing transcript..."):
-            done(
-                ui.safe(
-                    api.add_youtube_transcript,
-                    uid,
-                    transcript.strip(),
-                    yt.strip() or "YouTube transcript"
-                )
-            )
-
