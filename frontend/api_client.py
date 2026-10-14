@@ -74,6 +74,21 @@ def add_notes(user_id: int, title: str, text: str) -> dict:
 def add_youtube(user_id: int, url: str, title: Optional[str] = None) -> dict:
     return _call("POST", "/materials/youtube", timeout=300,
                  json={"user_id": user_id, "url": url, "title": title or None})
+    
+
+def add_youtube_transcript(user_id: int, text: str,
+                           title: Optional[str] = None) -> dict:
+    return _call(
+        "POST",
+        "/materials/youtube/transcript",
+        timeout=300,
+        json={
+            "user_id": user_id,
+            "title": title or "YouTube transcript",
+            "text": text,
+        },
+    )
+
 
 
 def materials(user_id: int) -> list:

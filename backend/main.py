@@ -83,6 +83,31 @@ def add_notes(body: NotesMaterial):
                   ingest.chunk_text(ingest.clean_text(body.text)))
 
 
+@app.post("/materials/youtube/transcript")
+def add_youtube_transcript(body: NotesMaterial):
+    """Save a manually pasted YouTube transcript as chunked material."""
+    _user(body.user_id)
+
+    text = ingest.clean_text(body.text)
+    if len(text.split()) < 20:
+        raise HTTPException(
+            422,
+            "Transcript is too short. Please provide at least 20 words."
+        )
+
+    chunks = ingest.chunk_text(text)
+    title = body.title.strip() if body.title else "YouTube transcript"
+
+    return _store(
+        body.user_id,
+        title,
+        "youtube",
+        "manually pasted YouTube transcript",
+        chunks
+    )
+
+
+
 @app.post("/materials/youtube")
 def add_youtube(body: YouTubeMaterial):
     _user(body.user_id)
