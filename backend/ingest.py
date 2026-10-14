@@ -58,17 +58,56 @@ def parse_youtube_id(url: str) -> Optional[str]:
     return url if re.fullmatch(r"[A-Za-z0-9_-]{11}", url.strip()) else None
 
 
+
 def fetch_youtube_segments(video_id: str) -> list:
-    """List of {text, start, duration}. Works with old and new youtube-transcript-api."""
-    from youtube_transcript_api import YouTubeTranscriptApi
+    """Fetch YouTube transcript and return normalized segments."""
     try:
-        try:
-            fetched = YouTubeTranscriptApi().fetch(video_id, languages=["en", "hi"])
-            return [{"text": s.text, "start": s.start, "duration": s.duration} for s in fetched]
-        except AttributeError:
-            return YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "hi"])
+        from youtube_transcript_api import YouTubeTranscriptApi
+
+        fetched = YouTubeTranscriptApi().fetch(
+            video_id,
+            languages=["en", "hi"]
+        )
+
+        segments = []
+        for item in fetched:
+            # Compatible with newer transcript snippets
+            if hasattr(item, "text"):
+                text = item.text
+                start = item.start
+                duration = item.duration
+            else:
+                # Compatible with dictionary-style transcript items
+                text = item.get("text", "")
+                start = item.get("start", 0)
+                duration = item.get("duration", 0)
+
+            if text and text.strip():
+                segments.append({
+                    "text": text,
+                    "start": float(start),
+                    "duration": float(duration)
+                })
+
+        if not segments:
+            raise IngestError(
+                "Transcript is empty. Try another video or upload its transcript."
+            )
+
+        return segments
+
+    except IngestError:
+        raise
     except Exception as exc:
-        raise IngestError(f"Could not fetch the transcript for this video: {exc}")
+        error = str(exc)
+        if "403" in error or "Forbidden" in error or "blocked" in error.lower():
+            raise IngestError(
+                "YouTube is blocking transcript requests from the backend server. "
+                "This is a hosting/network restriction, not a chunking error. "
+                "Try another video or use the transcript-text fallback."
+            )
+        raise IngestError(f"Could not fetch the transcript: {error}")
+
 
 
 def chunk_segments(segments: list, size: int = config.CHUNK_WORDS) -> list:
