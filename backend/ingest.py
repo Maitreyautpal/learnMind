@@ -1,6 +1,8 @@
 """Turn PDFs, pasted notes and YouTube videos into chunks."""
 import io
 import os
+import time
+import requests
 import re
 from typing import Optional
 
@@ -74,20 +76,119 @@ def _transcript_api():
     return YouTubeTranscriptApi()
 
 
+
 def fetch_youtube_segments(video_id: str) -> list:
-    """List of {text, start, duration}. Works with old and new youtube-transcript-api."""
-    from youtube_transcript_api import YouTubeTranscriptApi
-    try:
-        try:
-            fetched = _transcript_api().fetch(video_id, languages=["en", "hi"])
-            return [{"text": s.text, "start": s.start, "duration": s.duration} for s in fetched]
-        except AttributeError:
-            return YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "hi"])
-    except Exception as exc:
-        reason = (str(exc).strip().splitlines() or [""])[0][:160]
+    """Fetch YouTube captions through Supadata."""
+    api_key = os.getenv("SUPADATA_API_KEY")
+
+    if not api_key:
         raise IngestError(
-            "Could not fetch the transcript automatically (YouTube often blocks cloud servers). "
-            "Copy the video's transcript and add it in the Notes tab instead. " + reason)
+            "SUPADATA_API_KEY is missing from the backend environment."
+        )
+
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+    endpoint = "https://api.supadata.ai/v1/transcript"
+    headers = {"x-api-key": api_key}
+
+    try:
+        response = requests.get(
+            endpoint,
+            headers=headers,
+            params={
+                "url": video_url,
+                "lang": "en",
+                "mode": "native",
+                "text": "false",
+            },
+            timeout=60,
+        )
+
+        if response.status_code not in (200, 202):
+            raise IngestError(
+                f"Supadata transcript request failed "
+                f"({response.status_code}): {response.text[:500]}"
+            )
+
+        data = response.json()
+
+        # Large transcripts can return a job ID.
+        if response.status_code == 202 or "jobId" in data:
+            job_id = data.get("jobId")
+            if not job_id:
+                raise IngestError(
+                    "Supadata returned an async response without a job ID."
+                )
+
+            for _ in range(30):
+                time.sleep(2)
+                result = requests.get(
+                    f"{endpoint}/{job_id}",
+                    headers=headers,
+                    timeout=30,
+                )
+
+                if result.status_code != 200:
+                    raise IngestError(
+                        f"Transcript job check failed "
+                        f"({result.status_code}): {result.text[:300]}"
+                    )
+
+                data = result.json()
+                status = data.get("status")
+
+                if status == "completed":
+                    break
+
+                if status == "failed":
+                    raise IngestError(
+                        f"Supadata transcript job failed: "
+                        f"{data.get('error', 'unknown error')}"
+                    )
+            else:
+                raise IngestError(
+                    "Transcript is taking too long. Please try again."
+                )
+
+        content = data.get("content", [])
+
+        if isinstance(content, str):
+            content = [{"text": content, "offset": 0, "duration": 0}]
+
+        segments = []
+        for item in content:
+            text = str(item.get("text", "")).strip()
+            if not text:
+                continue
+
+            # Supadata offsets/durations are in milliseconds.
+            start = float(item.get("offset", 0)) / 1000
+            duration = float(item.get("duration", 0)) / 1000
+
+            segments.append({
+                "text": text,
+                "start": start,
+                "duration": duration,
+            })
+
+        if not segments:
+            raise IngestError(
+                "Supadata returned no transcript segments. "
+                "The video may not have accessible captions."
+            )
+
+        return segments
+
+    except IngestError:
+        raise
+    except requests.RequestException as exc:
+        raise IngestError(
+            f"Could not connect to Supadata: {exc}"
+        )
+    except (ValueError, TypeError, KeyError) as exc:
+        raise IngestError(
+            f"Could not parse the Supadata transcript response: {exc}"
+        )
+
 
 
 
