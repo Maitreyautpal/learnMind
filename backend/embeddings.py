@@ -55,12 +55,12 @@ class FastEmbedder:
 
     def __init__(self, model_name: str):
         from fastembed import TextEmbedding
-        self.model = TextEmbedding(model_name)
+        self.model = TextEmbedding(model_name, threads=1)
         self.name = model_name
         self.dim = len(next(iter(self.model.embed(["warm up"]))))
 
     def encode(self, texts) -> np.ndarray:
-        vecs = np.asarray(list(self.model.embed(list(texts))), dtype="float32")
+        vecs = np.asarray(list(self.model.embed(list(texts), batch_size=8)), dtype="float32")
         norms = np.linalg.norm(vecs, axis=1, keepdims=True)
         norms[norms == 0] = 1.0
         return (vecs / norms).astype("float32")
