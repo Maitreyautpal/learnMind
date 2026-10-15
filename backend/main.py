@@ -35,6 +35,8 @@ def _user(user_id: int) -> dict:
 def _store(user_id: int, title: str, kind: str, source: str, chunks: list) -> dict:
     if not chunks:
         raise HTTPException(422, "no content could be extracted")
+        if config.MAX_CHUNKS and len(chunks) > config.MAX_CHUNKS:
+            raise HTTPException(413, f"This material is too large for this server ({len(chunks)} chunks, "f"limit {config.MAX_CHUNKS}). Use a shorter PDF or split it into parts.")
     mid = db.add_material(user_id, title, kind, source, chunks)
     vector_store.add_material_chunks(user_id)
     return {"material_id": mid, "title": title, "kind": kind, "n_chunks": len(chunks)}
